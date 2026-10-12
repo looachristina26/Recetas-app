@@ -8,9 +8,12 @@ function App() {
   const [texto, setTexto] = useState('')
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
+  const [seleccionada, setSeleccionada] = useState(null)
+
+  const base = import.meta.env.BASE_URL
 
   const opciones = [
-    { nombre: 'Inicio', url: '/' },
+    { nombre: 'Inicio', url: base },
   ]
 
   function traerRecetas(busqueda) {
@@ -25,7 +28,6 @@ function App() {
         return res.json()
       })
       .then((data) => {
-        // si no encuentra nada, la API devuelve null
         setRecetas(data.meals || [])
         setCargando(false)
       })
@@ -41,42 +43,88 @@ function App() {
 
   function buscar(e) {
     e.preventDefault()
+    setSeleccionada(null)
     traerRecetas(texto)
+  }
+
+  function ingredientesDe(receta) {
+    const lista = []
+    for (let i = 1; i <= 20; i++) {
+      const ingrediente = receta['strIngredient' + i]
+      const medida = receta['strMeasure' + i]
+      if (ingrediente && ingrediente.trim() !== '') {
+        lista.push((medida || '').trim() + ' ' + ingrediente.trim())
+      }
+    }
+    return lista
   }
 
   return (
     <div>
-      <Navbar imagenUrl="/logo.svg" opciones={opciones} />
+      <Navbar imagenUrl={base + 'logo.svg'} opciones={opciones} />
 
       <main>
-        <h1>Recetas del mundo</h1>
-
-        <form onSubmit={buscar}>
-          <input
-            type="text"
-            placeholder="Buscar receta (en inglés)"
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-          />
-          <button type="submit">Buscar</button>
-        </form>
-
-        {cargando && <p>Cargando...</p>}
-        {error && <p className="error">{error}</p>}
-        {!cargando && !error && recetas.length === 0 && <p>No se encontraron recetas</p>}
-
-        <div className="lista">
-          {recetas.map((receta) => (
-            <Card
-              key={receta.idMeal}
-              titulo={receta.strMeal}
-              imagen={receta.strMealThumb}
-              categoria={receta.strCategory}
-              origen={receta.strArea}
-              descripcion={(receta.strInstructions || '').slice(0, 100) + '...'}
+        {seleccionada ? (
+          <div className="detalle">
+            <button onClick={() => setSeleccionada(null)}>← Volver</button>
+            <h1>{seleccionada.strMeal}</h1>
+            <img
+              src={seleccionada.strMealThumb}
+              alt={seleccionada.strMeal}
+              style={{ maxWidth: '100%', width: '400px' }}
             />
-          ))}
-        </div>
+            <p>
+              <strong>Categoría:</strong> {seleccionada.strCategory} |{' '}
+              <strong>Origen:</strong> {seleccionada.strArea}
+            </p>
+
+            <h2>Ingredientes</h2>
+            <ul>
+              {ingredientesDe(seleccionada).map((item, i) => (
+                <li key={i}>{item}</li>
+              ))}
+            </ul>
+
+            <h2>Preparación</h2>
+            <p style={{ whiteSpace: 'pre-line' }}>{seleccionada.strInstructions}</p>
+          </div>
+        ) : (
+          <>
+            <h1>Recetas del mundo</h1>
+
+            <form onSubmit={buscar}>
+              <input
+                type="text"
+                placeholder="Buscar receta (en inglés)"
+                value={texto}
+                onChange={(e) => setTexto(e.target.value)}
+              />
+              <button type="submit">Buscar</button>
+            </form>
+
+            {cargando && <p>Cargando...</p>}
+            {error && <p className="error">{error}</p>}
+            {!cargando && !error && recetas.length === 0 && <p>No se encontraron recetas</p>}
+
+            <div className="lista">
+              {recetas.map((receta) => (
+                <div
+                  key={receta.idMeal}
+                  onClick={() => setSeleccionada(receta)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <Card
+                    titulo={receta.strMeal}
+                    imagen={receta.strMealThumb}
+                    categoria={receta.strCategory}
+                    origen={receta.strArea}
+                    descripcion={(receta.strInstructions || '').slice(0, 100) + '...'}
+                  />
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </main>
 
       <Footer />
